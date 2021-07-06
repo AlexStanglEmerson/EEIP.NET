@@ -242,3 +242,5 @@ ModelManifest.xml
 .fake/
 
 nuget.exe
+nuget.config
+*.old
