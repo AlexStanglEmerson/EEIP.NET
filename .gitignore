@@ -244,3 +244,8 @@ ModelManifest.xml
 nuget.exe
 nuget.config
 *.old
+
+EEIP.NET.Sandbox/*
+!EEIP.NET.Sandbox/EEIP.NET.Sandbox.csproj
+!EEIP.NET.Sandbox/Program.cs
+!EEIP.NET.Sandbox/IRunner.cs
