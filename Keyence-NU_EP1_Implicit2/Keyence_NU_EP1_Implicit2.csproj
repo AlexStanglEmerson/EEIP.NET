@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <OutputType>Exe</OutputType>
     <RootNamespace>Sres.Networking.Eeip.Examples</RootNamespace>
     <AssemblyName>Keyence-NU_EP1_Implicit2</AssemblyName>
