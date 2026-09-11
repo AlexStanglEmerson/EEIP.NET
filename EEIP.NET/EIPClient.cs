@@ -1188,6 +1188,94 @@ namespace Sres.Net.EEIP
             return returnData;
         }
 
+        public byte[] SetMember(int classID, int instanceID, int attributeID, int memberID, byte[] value)
+        {
+            byte[] requestedPath = GetEPath(classID, instanceID, attributeID, memberID);
+            if (sessionHandle == 0)             //If a Session is not Registers, Try to Registers a Session with the predefined IP-Address and Port
+                this.RegisterSession();
+            byte[] dataToSend = new byte[42 + value.Length + requestedPath.Length];
+            Encapsulation encapsulation = new Encapsulation();
+            encapsulation.SessionHandle = sessionHandle;
+            encapsulation.Command = Encapsulation.CommandsEnum.SendRRData;
+            encapsulation.Length = (UInt16)(18+value.Length + requestedPath.Length);
+            //---------------Interface Handle CIP
+            encapsulation.CommandSpecificData.Add(0);
+            encapsulation.CommandSpecificData.Add(0);
+            encapsulation.CommandSpecificData.Add(0);
+            encapsulation.CommandSpecificData.Add(0);
+            //----------------Interface Handle CIP
+
+            //----------------Timeout
+            encapsulation.CommandSpecificData.Add(0);
+            encapsulation.CommandSpecificData.Add(0);
+            //----------------Timeout
+
+            //Common Packet Format (Table 2-6.1)
+            Encapsulation.CommonPacketFormat commonPacketFormat = new Encapsulation.CommonPacketFormat();
+            commonPacketFormat.ItemCount = 0x02;
+
+            commonPacketFormat.AddressItem = 0x0000;        //NULL (used for UCMM Messages)
+            commonPacketFormat.AddressLength = 0x0000;
+
+            commonPacketFormat.DataItem = 0xB2;
+            commonPacketFormat.DataLength = (UInt16)(2 + value.Length+requestedPath.Length);
+
+
+
+            //----------------CIP Command "Set Member"
+            commonPacketFormat.Data.Add((byte)Sres.Net.EEIP.CIPCommonServices.Set_Member);
+            //----------------CIP Command "Set Member"
+
+            //----------------Requested Path size (number of 16 bit words)
+            commonPacketFormat.Data.Add((byte)(requestedPath.Length/2));
+            //----------------Requested Path size (number of 16 bit words)
+
+            //----------------Path segment for Class ID
+            //----------------Path segment for Class ID
+
+            //----------------Path segment for Instance ID
+            //----------------Path segment for Instance ID
+
+            //----------------Path segment for Attribute ID
+            //----------------Path segment for Attribute ID
+
+            //----------------Path segment for Member ID
+            //----------------Path segment for Member ID
+            for (int i = 0; i < requestedPath.Length; i++)
+            {
+                commonPacketFormat.Data.Add(requestedPath[i]);
+            }
+
+                //----------------Data
+            for (int i = 0; i < value.Length; i++)
+            {
+                commonPacketFormat.Data.Add(value[i]);
+            }
+            //----------------Data
+
+            byte[] dataToWrite = new byte[encapsulation.toBytes().Length + commonPacketFormat.toBytes().Length];
+            System.Buffer.BlockCopy(encapsulation.toBytes(), 0, dataToWrite, 0, encapsulation.toBytes().Length);
+            System.Buffer.BlockCopy(commonPacketFormat.toBytes(), 0, dataToWrite, encapsulation.toBytes().Length, commonPacketFormat.toBytes().Length);
+            encapsulation.toBytes();
+
+            stream.Write(dataToWrite, 0, dataToWrite.Length);
+            byte[] data = new Byte[564];
+
+            Int32 bytes = stream.Read(data, 0, data.Length);
+
+            //--------------------------BEGIN Error?
+            if (data[42] != 0)      //Exception codes see "Table B-1.1 CIP General Status Codes"
+            {
+                throw new CIPException(GeneralStatusCodes.GetStatusCode(data[42]));
+            }
+            //--------------------------END Error?
+
+            byte[] returnData = new byte[bytes - 44];
+            System.Buffer.BlockCopy(data, 44, returnData, 0, bytes - 44);
+
+            return returnData;
+        }
+
         /// <summary>
         /// Get the Encrypted Request Path - See Volume 1 Appendix C (C9)
         /// e.g. for 8 Bit: 20 05 24 02 30 01
@@ -1197,7 +1285,7 @@ namespace Sres.Net.EEIP
         /// <param name="instanceID">Requested Instance ID</param>
         /// <param name="attributeID">Requested Attribute ID - if "0" the attribute will be ignored</param>
         /// <returns>Encrypted Request Path</returns>
-        private byte[] GetEPath(int classID, int instanceID, int attributeID)
+        private static byte[] GetEPath(int classID, int instanceID, int attributeID)
         {
             int byteCount = 0;
             if (classID < 0xff)
@@ -1265,6 +1353,37 @@ namespace Sres.Net.EEIP
 
             return returnValue;
 
+        }
+
+        /// <summary>
+        /// Get the Encrypted Request Path with a member ID. This is based on a best guess of what the format should be using the other IDs as a reference.
+        /// </summary>
+        /// <param name="classID">Requested Class ID</param>
+        /// <param name="instanceID">Requested Instance ID</param>
+        /// <param name="attributeID">Requested Attribute ID - if "0" the attribute will be ignored</param>
+        /// <param name="memberID">Requested Member ID</param>
+        /// <returns>Encrypted Request Path</returns>
+        private static byte[] GetEPath(int classID, int instanceID, int attributeID, int memberID)
+        {
+            // Start by getting the normal EPath for class, instance, and attribute
+            var ePath = GetEPath(classID, instanceID, attributeID).ToList();
+
+            // Append the member ID to the path
+            // https://github.com/ottowayi/pycomm3/blob/master/pycomm3/cip/data_types.py#L1048C1-L1076C6 is used as a reference for the 0x40 and 0x41 constants
+            if (memberID < 0xff)
+            {
+                ePath.Add(0x28);
+                ePath.Add((byte)memberID);
+            }
+            else
+            {
+                ePath.Add(0x29);
+                ePath.Add(0);                              // Padded Byte
+                ePath.Add((byte)memberID);                 // LSB
+                ePath.Add((byte)(memberID >> 8));          // MSB
+            }
+
+            return [.. ePath];
         }
 
         /// <summary>
