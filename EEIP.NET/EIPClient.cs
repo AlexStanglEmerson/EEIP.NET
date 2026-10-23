@@ -1190,12 +1190,6 @@ namespace Sres.Net.EEIP
 
         private byte[] SetMember(int classID, int instanceID, int attributeID, int memberID, byte[] value)
         {
-            // If the value array is less than 4 bytes in size, pad it with zeros (values are little-endian)
-            if (value.Length < 4)
-            {
-                value = [.. value, .. new byte[4 - value.Length]];
-            }
-
             byte[] requestedPath = GetEPath(classID, instanceID, attributeID, memberID);
             if (sessionHandle == 0)             //If a Session is not Registers, Try to Registers a Session with the predefined IP-Address and Port
                 this.RegisterSession();
@@ -1282,44 +1276,11 @@ namespace Sres.Net.EEIP
             return returnData;
         }
 
-        public byte[] SetMember(int classID, int instanceID, int attributeID, int memberID, ReadOnlySpan<byte> value)
-        {
-            if (value.Length != 4)
-            {
-                throw new ArgumentException("Value length must be exactly 4 bytes.");
-            }
-            return SetMember(classID, instanceID, attributeID, memberID, value.ToArray());
-        }
+        public byte[] SetMember(int classID, int instanceID, int attributeID, int memberID, ReadOnlySpan<byte> value) =>
+            SetMember(classID, instanceID, attributeID, memberID, value.ToArray());
 
         public byte[] SetMember(int classID, int instanceID, int attributeID, int memberID, ReadOnlyMemory<byte> value) =>
             SetMember(classID, instanceID, attributeID, memberID, value.Span);
-
-        public byte[] SetMember(int classID, int instanceID, int attributeID, int memberID, bool value) =>
-            SetMember(classID, instanceID, attributeID, memberID, Convert.ToInt32(value));
-
-        public byte[] SetMember(int classID, int instanceID, int attributeID, int memberID, sbyte value) =>
-            SetMember(classID, instanceID, attributeID, memberID, (int)value);
-
-        public byte[] SetMember(int classID, int instanceID, int attributeID, int memberID, byte value) =>
-            SetMember(classID, instanceID, attributeID, memberID, (uint)value);
-
-        public byte[] SetMember(int classID, int instanceID, int attributeID, int memberID, short value) =>
-            SetMember(classID, instanceID, attributeID, memberID, (int)value);
-
-        public byte[] SetMember(int classID, int instanceID, int attributeID, int memberID, ushort value) =>
-            SetMember(classID, instanceID, attributeID, memberID, (uint)value);
-
-        public byte[] SetMember(int classID, int instanceID, int attributeID, int memberID, int value) =>
-            SetMember(classID, instanceID, attributeID, memberID, [(byte)(value & 0xFF), (byte)((value >> 8) & 0xFF), (byte)((value >> 16) & 0xFF), (byte)((value >> 24) & 0xFF)]);
-
-        public byte[] SetMember(int classID, int instanceID, int attributeID, int memberID, uint value) =>
-            SetMember(classID, instanceID, attributeID, memberID, [(byte)(value & 0xFF), (byte)((value >> 8) & 0xFF), (byte)((value >> 16) & 0xFF), (byte)((value >> 24) & 0xFF)]);
-
-        public byte[] SetMember(int classID, int instanceID, int attributeID, int memberID, float value)
-        {
-            int bits = BitConverter.SingleToInt32Bits(value);
-            return SetMember(classID, instanceID, attributeID, memberID, [(byte)(bits & 0xFF), (byte)((bits >> 8) & 0xFF), (byte)((bits >> 16) & 0xFF), (byte)((bits >> 24) & 0xFF)]);
-        }
 
         /// <summary>
         /// Get the Encrypted Request Path - See Volume 1 Appendix C (C9)
